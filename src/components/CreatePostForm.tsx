@@ -2,6 +2,7 @@ import {
   Button,
   Divider,
   Group,
+  Indicator,
   Stack,
   Switch,
   TagsInput,
@@ -16,6 +17,7 @@ import {
   IconPhoto,
   IconUser,
 } from "@tabler/icons-react";
+import dayjs from "dayjs";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { firestoreService } from "../services";
@@ -24,9 +26,14 @@ import { CreateInstagramPost, InstagramPost } from "../types";
 interface CreatePostFormProps {
   onClose: () => void;
   editingPost?: InstagramPost | null;
+  schedules: Date[];
 }
 
-const CreatePostForm = ({ onClose, editingPost }: CreatePostFormProps) => {
+const CreatePostForm = ({
+  onClose,
+  editingPost,
+  schedules,
+}: CreatePostFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const defaultValues: CreateInstagramPost = {
@@ -206,6 +213,17 @@ const CreatePostForm = ({ onClose, editingPost }: CreatePostFormProps) => {
             description="When should this post be published?"
             placeholder="Select date and time"
             value={field.value ? field.value.toISOString() : null}
+            renderDay={(day) => {
+              const sch =
+                schedules.find((date) =>
+                  dayjs(date).isSame(dayjs(day), "date")
+                ) ?? null;
+              return (
+                <Indicator size={6} color="violet" offset={-5} disabled={!sch}>
+                  <div>{dayjs(day).format("DD")}</div>
+                </Indicator>
+              );
+            }}
             onChange={(value: string | null) => {
               const dateValue = value ? new Date(value) : null;
               field.onChange(dateValue);

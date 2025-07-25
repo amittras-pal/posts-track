@@ -1,4 +1,12 @@
-import { Drawer, Group, Stack, Text, Title, ActionIcon, Tooltip } from "@mantine/core";
+import {
+  ActionIcon,
+  Drawer,
+  Group,
+  Stack,
+  Text,
+  Title,
+  Tooltip,
+} from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconPhotoPlus } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
@@ -154,6 +162,9 @@ const InstagramDashboard = () => {
             setShowCreateForm(false);
             setEditingPost(null);
           }}
+          schedules={posts
+            .map((p) => p.scheduledFor)
+            .filter((p) => p !== null && p !== undefined)}
           editingPost={editingPost}
         />
       </Drawer>
