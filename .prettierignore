@@ -1,0 +1,15 @@
+node_modules
+dist
+build
+.env
+.env.local
+.env.production
+.env.development
+*.log
+coverage
+.nyc_output
+.DS_Store
+*.tgz
+*.tar.gz
+package-lock.json
+yarn.lock
