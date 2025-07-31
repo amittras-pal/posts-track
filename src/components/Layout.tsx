@@ -1,6 +1,7 @@
 import {
   ActionIcon,
   AppShell,
+  Burger,
   Button,
   Group,
   NavLink,
@@ -8,12 +9,11 @@ import {
   Text,
   Title,
   useMantineColorScheme,
-  Burger,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import {
-  IconBrandInstagram,
+  IconListCheck,
   IconLogout,
   IconMoon,
   IconSun,
@@ -32,9 +32,7 @@ const Layout = ({ children }: LayoutProps) => {
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const [mobileOpened, { toggle: toggleMobile }] = useDisclosure();
 
-  const navItems = [
-    { icon: IconBrandInstagram, label: "Instagram", path: "/" },
-  ];
+  const navItems = [{ icon: IconListCheck, label: "Posts List", path: "/" }];
 
   const handleLogout = async () => {
     try {

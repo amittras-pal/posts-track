@@ -9,6 +9,9 @@ export interface InstagramPost {
   /** List of file names associated with the post (images/videos) */
   fileName: string[];
 
+  /** List of uploaded file URLs from Firebase Storage */
+  files: string[];
+
   /** Caption text for the Instagram post */
   caption: string;
 

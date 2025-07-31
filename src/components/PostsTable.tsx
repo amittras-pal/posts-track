@@ -1,28 +1,30 @@
 import {
   ActionIcon,
   Badge,
+  Box,
+  Button,
   Card,
+  Grid,
   Group,
+  Image,
   Menu,
   ScrollArea,
+  SimpleGrid,
   Stack,
-  Table,
   Text,
   Title,
   Tooltip,
 } from "@mantine/core";
 import {
-  IconCalendar,
+  IconAt,
   IconCheck,
+  IconChevronDown,
+  IconChevronUp,
   IconCopy,
   IconDotsVertical,
   IconEdit,
-  IconPhoto,
-  IconInfoCircle,
   IconHash,
-  IconAt,
-  IconChevronUp,
-  IconChevronDown,
+  IconInfoCircle,
 } from "@tabler/icons-react";
 import { useState } from "react";
 import { InstagramPost, PostStatus } from "../types";
@@ -42,8 +44,9 @@ const StatusBadge = ({ post }: StatusBadgeProps) => {
   };
 
   return (
-    <Badge color={colors[status]} variant="light" size="sm" fullWidth>
+    <Badge color={colors[status]} variant="light" size="sm">
       {status}
+      {post.scheduledFor ? `: ${formatDate(post.scheduledFor)}` : ""}
     </Badge>
   );
 };
@@ -57,6 +60,16 @@ interface PostsTableProps {
   onMarkAsPosted: (post: InstagramPost) => void;
 }
 
+const formatDate = (date: Date | null | undefined) => {
+  if (!date) return "-";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+};
+
 const PostsTable = ({
   posts,
   loading,
@@ -66,16 +79,6 @@ const PostsTable = ({
   onMarkAsPosted,
 }: PostsTableProps) => {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc" | null>("asc");
-
-  const formatDate = (date: Date | null | undefined) => {
-    if (!date) return "-";
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(date);
-  };
 
   const getDateForSorting = (post: InstagramPost): Date | null => {
     if (post.postedAt) return post.postedAt;
@@ -109,224 +112,186 @@ const PostsTable = ({
   });
 
   return (
-    <Card shadow="sm" padding="lg" radius="md" withBorder>
-      <Stack gap="md">
-        <Group justify="space-between">
-          <Title order={3}>Drafts & Scheduled</Title>
+    <Stack gap="md">
+      <Group justify="space-between">
+        <Title order={3}>Drafts & Scheduled</Title>
+        <Group gap="xs">
+          <Button
+            variant="light"
+            size="xs"
+            onClick={handleSort}
+            leftSection={
+              sortOrder === "asc" ? (
+                <IconChevronUp size="0.8rem" />
+              ) : sortOrder === "desc" ? (
+                <IconChevronDown size="0.8rem" />
+              ) : null
+            }
+          >
+            Sort by Date
+          </Button>
           <Text size="sm" c="dimmed">
             {posts.length} posts total
           </Text>
         </Group>
+      </Group>
 
-        <ScrollArea h="calc(100vh - 286px)" w="100%">
-          <Table
-            striped
-            highlightOnHover
-            styles={{
-              table: { height: 600, maxHeight: 600, overflowY: "auto" },
-              thead: {
-                position: "sticky",
-                top: 0,
-                backgroundColor: "Scrollbar",
-              },
-            }}
-          >
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th></Table.Th>
-                <Table.Th>Caption</Table.Th>
-                <Table.Th>Notes</Table.Th>
-                <Table.Th>Hashtags</Table.Th>
-                <Table.Th>Files</Table.Th>
-                <Table.Th>Collaborators</Table.Th>
-                <Table.Th>Status</Table.Th>
-                <Table.Th
-                  style={{ cursor: "pointer", userSelect: "none" }}
-                  onClick={handleSort}
+      <ScrollArea h="calc(100vh - 286px)" w="100%">
+        {loading ? (
+          <Box ta="center" py="xl">
+            <Text c="dimmed">Loading posts...</Text>
+          </Box>
+        ) : posts.length === 0 ? (
+          <Box ta="center" py="xl">
+            <Text c="dimmed">No Drafts Created, create your first draft.</Text>
+          </Box>
+        ) : (
+          <SimpleGrid cols={{ sm: 1, md: 2 }}>
+            {sortedPosts.map((post) => (
+              <Card
+                key={post.id}
+                shadow="xs"
+                padding="md"
+                radius="sm"
+                component={Grid}
+                withBorder
+              >
+                <Grid.Col
+                  span={{ sm: 12, md: 4 }}
+                  style={{ position: "relative" }}
                 >
-                  <Group
-                    gap="xs"
-                    justify="center"
-                    style={{ flexWrap: "nowrap" }}
+                  <Box
+                    style={{
+                      maxHeight: 240,
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center'
+                    }}
                   >
-                    <Text>Scheduled/Posted</Text>
-                    {sortOrder === "asc" && <IconChevronUp size="0.8rem" />}
-                    {sortOrder === "desc" && <IconChevronDown size="0.8rem" />}
+                    <Image
+                      src={post.files[0]}
+                      alt={post.fileName?.[0] || "Post image"}
+                      style={{ borderRadius: 8, objectFit: "cover" }}
+                    />
+                  </Box>
+                  {post.files.length > 1 && (
+                    <Badge
+                      variant="filled"
+                      size="lg"
+                      style={{
+                        position: "absolute",
+                        top: 15,
+                        right: 15,
+                        padding: "2px 8px",
+                      }}
+                    >
+                      +{post.files.length - 1}
+                    </Badge>
+                  )}
+                </Grid.Col>
+                <Grid.Col span={{ sm: 12, md: 8 }}>
+                  {/* Header with status and actions */}
+                  <Group justify="space-between" align="flex-start">
+                    <StatusBadge post={post} />
+                    <Menu shadow="md" width={200}>
+                      <Menu.Target>
+                        <ActionIcon variant="light" color="gray" size="sm">
+                          <IconDotsVertical size="0.9rem" />
+                        </ActionIcon>
+                      </Menu.Target>
+                      <Menu.Dropdown styles={{ dropdown: { width: 240 } }}>
+                        <Menu.Item
+                          leftSection={<IconInfoCircle size="1rem" />}
+                          onClick={() => onViewDetails(post)}
+                        >
+                          View details
+                        </Menu.Item>
+                        <Menu.Item
+                          leftSection={<IconEdit size="1rem" />}
+                          onClick={() => onEditPost(post)}
+                          color="orange"
+                        >
+                          Edit post
+                        </Menu.Item>
+                        {!post.isPosted && (
+                          <Menu.Item
+                            leftSection={<IconCheck size="1rem" />}
+                            onClick={() => onMarkAsPosted(post)}
+                            color="green"
+                          >
+                            Mark as posted
+                          </Menu.Item>
+                        )}
+                        <Menu.Divider />
+                        <Menu.Item
+                          leftSection={<IconCopy size="1rem" />}
+                          onClick={() => onCopyPost(post)}
+                        >
+                          Copy caption & hashtags
+                        </Menu.Item>
+                      </Menu.Dropdown>
+                    </Menu>
                   </Group>
-                </Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {loading ? (
-                <Table.Tr>
-                  <Table.Td
-                    colSpan={8}
-                    style={{ textAlign: "center", padding: "2rem" }}
-                  >
-                    <Text c="dimmed">Loading posts...</Text>
-                  </Table.Td>
-                </Table.Tr>
-              ) : posts.length === 0 ? (
-                <Table.Tr>
-                  <Table.Td
-                    colSpan={8}
-                    style={{ textAlign: "center", padding: "2rem" }}
-                  >
-                    <Text c="dimmed">
-                      No Drafts Created, create your first draft.
+                  {/* Caption */}
+                  <Box>
+                    <Text size="sm" fw={500} mb={4}>
+                      Caption:
                     </Text>
-                  </Table.Td>
-                </Table.Tr>
-              ) : (
-                sortedPosts.map((post) => (
-                  <Table.Tr key={post.id}>
-                    <Table.Td>
-                      <Menu shadow="md" width={200}>
-                        <Menu.Target>
-                          <ActionIcon variant="light" color="gray" size="sm">
-                            <IconDotsVertical size="0.9rem" />
-                          </ActionIcon>
-                        </Menu.Target>
-
-                        <Menu.Dropdown styles={{ dropdown: { width: 240 } }}>
-                          <Menu.Item
-                            leftSection={<IconInfoCircle size="1rem" />}
-                            onClick={() => onViewDetails(post)}
-                          >
-                            View details
-                          </Menu.Item>
-
-                          <Menu.Item
-                            leftSection={<IconEdit size="1rem" />}
-                            onClick={() => onEditPost(post)}
-                            color="orange"
-                          >
-                            Edit post
-                          </Menu.Item>
-
-                          {!post.isPosted && (
-                            <Menu.Item
-                              leftSection={<IconCheck size="1rem" />}
-                              onClick={() => onMarkAsPosted(post)}
-                              color="green"
-                            >
-                              Mark as posted
-                            </Menu.Item>
-                          )}
-
-                          <Menu.Divider />
-
-                          <Menu.Item
-                            leftSection={<IconCopy size="1rem" />}
-                            onClick={() => onCopyPost(post)}
-                          >
-                            Copy caption & hashtags
-                          </Menu.Item>
-                        </Menu.Dropdown>
-                      </Menu>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text size="sm" lineClamp={2} w={240}>
-                        {post.caption}
-                      </Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text size="sm" lineClamp={2} c="dimmed" w={240}>
-                        {post.notes || "-"}
-                      </Text>
-                    </Table.Td>
-                    <Table.Td width={100}>
-                      <Tooltip
-                        label={
-                          post.hashtags.length > 0
-                            ? post.hashtags.map((tag) => `#${tag}`).join(" ")
-                            : "No hashtags"
-                        }
-                        multiline
-                        maw={300}
-                      >
-                        <Group
-                          gap="xs"
-                          style={{ cursor: "pointer", flexWrap: "nowrap" }}
-                        >
-                          <IconHash size="1rem" />
-                          <Text size="sm">{post.hashtags.length}</Text>
-                        </Group>
-                      </Tooltip>
-                    </Table.Td>
-                    <Table.Td width={100}>
-                      <Tooltip
-                        label={
-                          post.fileName.length > 0
-                            ? post.fileName.join(", ")
-                            : "No files"
-                        }
-                        multiline
-                        maw={300}
-                      >
-                        <Group
-                          gap="xs"
-                          style={{ cursor: "pointer", flexWrap: "nowrap" }}
-                        >
-                          <IconPhoto size="1rem" />
-                          <Text size="sm">{post.fileName.length}</Text>
-                        </Group>
-                      </Tooltip>
-                    </Table.Td>
-                    <Table.Td width={120}>
-                      <Tooltip
-                        label={
-                          post.peopleToTag && post.peopleToTag.length > 0
-                            ? post.peopleToTag
-                                .map((person) => `@${person}`)
-                                .join(", ")
-                            : "No people to tag"
-                        }
-                        multiline
-                        maw={300}
-                      >
-                        <Group
-                          gap="xs"
-                          style={{ cursor: "pointer", flexWrap: "nowrap" }}
-                        >
-                          <IconAt size="1rem" />
-                          <Text size="sm">{post.peopleToTag?.length || 0}</Text>
-                        </Group>
-                      </Tooltip>
-                    </Table.Td>
-                    <Table.Td width={140}>
-                      <StatusBadge post={post} />
-                    </Table.Td>
-                    <Table.Td width={160}>
-                      <Group gap="xs">
-                        {post.scheduledFor && !post.isPosted && (
-                          <Group gap="xs" style={{ flexWrap: "nowrap" }}>
-                            <IconCalendar size="0.8rem" />
-                            <Text size="sm" style={{ whiteSpace: "nowrap" }}>
-                              {formatDate(post.scheduledFor)}
-                            </Text>
-                          </Group>
-                        )}
-                        {post.postedAt && (
-                          <Text size="sm" c="green">
-                            {formatDate(post.postedAt)}
-                          </Text>
-                        )}
-                        {!post.scheduledFor && !post.postedAt && (
-                          <Text size="sm" c="dimmed">
-                            Draft
-                          </Text>
-                        )}
+                    <Text size="sm" lineClamp={3}>
+                      {post.caption}
+                    </Text>
+                  </Box>
+                  {/* Notes */}
+                  <Box mt="xs">
+                    <Text size="sm" fw={500} mb={4} c="dimmed">
+                      Notes:
+                    </Text>
+                    <Text size="sm" c="dimmed" lineClamp={2}>
+                      {post.notes || "-"}
+                    </Text>
+                  </Box>
+                  {/* Metadata row */}
+                  <Group gap="md" wrap="wrap" mt="xs">
+                    {/* Hashtags */}
+                    <Tooltip
+                      label={
+                        post.hashtags.length > 0
+                          ? post.hashtags.map((tag) => `#${tag}`).join(" ")
+                          : "No hashtags"
+                      }
+                      multiline
+                      maw={300}
+                    >
+                      <Group gap="xs" style={{ cursor: "pointer" }}>
+                        <IconHash size="1rem" />
+                        <Text size="sm">{post.hashtags.length}</Text>
                       </Group>
-                    </Table.Td>
-                  </Table.Tr>
-                ))
-              )}
-            </Table.Tbody>
-          </Table>
-        </ScrollArea>
-      </Stack>
-    </Card>
+                    </Tooltip>
+                    {/* Collaborators */}
+                    <Tooltip
+                      label={
+                        post.peopleToTag && post.peopleToTag.length > 0
+                          ? post.peopleToTag
+                              .map((person) => `@${person}`)
+                              .join(", ")
+                          : "No people to tag"
+                      }
+                      multiline
+                      maw={300}
+                    >
+                      <Group gap="xs" style={{ cursor: "pointer" }}>
+                        <IconAt size="1rem" />
+                        <Text size="sm">{post.peopleToTag?.length || 0}</Text>
+                      </Group>
+                    </Tooltip>
+                  </Group>
+                </Grid.Col>
+              </Card>
+            ))}
+          </SimpleGrid>
+        )}
+      </ScrollArea>
+    </Stack>
   );
 };
 

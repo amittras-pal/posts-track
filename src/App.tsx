@@ -2,7 +2,8 @@ import { Route, BrowserRouter as Router, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PublicRoute from "./components/PublicRoute";
-import { InstagramDashboard, LoginPage } from "./pages";
+import { LoginPage } from "./pages";
+import PostsList from "./pages/PostsList";
 
 const App = () => {
   return (
@@ -22,7 +23,7 @@ const App = () => {
             <ProtectedRoute>
               <Layout>
                 <Routes>
-                  <Route path="/" element={<InstagramDashboard />} />
+                  <Route path="/" element={<PostsList />} />
                   {/* DO not enable / remove these components. */}
                   {/* <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/profile" element={<ProfilePage />} />

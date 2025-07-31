@@ -1,7 +1,11 @@
 import {
+  ActionIcon,
+  Box,
   Button,
   Divider,
+  Grid,
   Group,
+  Image,
   Indicator,
   Stack,
   Switch,
@@ -13,14 +17,21 @@ import { DateTimePicker } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import {
   IconCalendar,
+  IconClipboard,
   IconHash,
   IconPhoto,
   IconUser,
+  IconX,
 } from "@tabler/icons-react";
 import dayjs from "dayjs";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { firestoreService } from "../services";
+import {
+  addPost,
+  deleteFilesFromStorage,
+  updatePost,
+  uploadImages,
+} from "../services";
 import { CreateInstagramPost, InstagramPost } from "../types";
 
 interface CreatePostFormProps {
@@ -29,15 +40,37 @@ interface CreatePostFormProps {
   schedules: Date[];
 }
 
+type ImageItem =
+  | { type: "url"; url: string; name: string }
+  | { type: "file"; file: File; name: string };
+
 const CreatePostForm = ({
   onClose,
   editingPost,
   schedules,
 }: CreatePostFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [images, setImages] = useState<ImageItem[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Initialize state from editingPost when it changes
+  useEffect(() => {
+    if (editingPost) {
+      // Map file URLs and names to ImageItem objects
+      const urlItems: ImageItem[] = (editingPost.files || []).map((url, i) => ({
+        type: "url",
+        url,
+        name: editingPost.fileName?.[i] || `image_${i + 1}`,
+      }));
+      setImages(urlItems);
+    } else {
+      setImages([]);
+    }
+  }, [editingPost]);
 
   const defaultValues: CreateInstagramPost = {
     fileName: editingPost?.fileName || [],
+    files: editingPost?.files || [],
     caption: editingPost?.caption || "",
     hashtags: editingPost?.hashtags || [],
     peopleToTag: editingPost?.peopleToTag || [],
@@ -50,43 +83,143 @@ const CreatePostForm = ({
     control,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<CreateInstagramPost>({
     defaultValues,
   });
 
+  // Keep fileName in sync with images
+  useEffect(() => {
+    setValue(
+      "fileName",
+      images.map((img) => img.name)
+    );
+  }, [images, setValue]);
+
+  // Handle paste
+  const handlePaste = useCallback((event: ClipboardEvent) => {
+    const items = event.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.indexOf("image") !== -1) {
+        const file = item.getAsFile();
+        if (file) {
+          setImages((prev) => [
+            ...prev,
+            { type: "file", file, name: file.name },
+          ]);
+          notifications.show({
+            title: "Image Pasted!",
+            message: "Image has been added from clipboard",
+            color: "green",
+          });
+        }
+      }
+    }
+  }, []);
+
+  const handlePasteClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files) {
+      Array.from(files).forEach((file) => {
+        if (file.type.startsWith("image/")) {
+          setImages((prev) => [
+            ...prev,
+            { type: "file", file, name: file.name },
+          ]);
+        }
+      });
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Add paste event listener
+  useEffect(() => {
+    const handlePasteEvent = (e: ClipboardEvent) => handlePaste(e);
+    document.addEventListener("paste", handlePasteEvent);
+    return () => document.removeEventListener("paste", handlePasteEvent);
+  }, [handlePaste]);
+
+  // Type guards
+  function isUrlImage(
+    img: ImageItem
+  ): img is { type: "url"; url: string; name: string } {
+    return img.type === "url";
+  }
+  function isFileImage(
+    img: ImageItem
+  ): img is { type: "file"; file: File; name: string } {
+    return img.type === "file";
+  }
+
   const onSubmit = async (data: CreateInstagramPost) => {
     setIsSubmitting(true);
-
     try {
-      if (editingPost && editingPost.id) {
-        // Update existing post
-        await firestoreService.updatePost(editingPost.id, data);
+      // Split images into URLs and Files using type guards
+      const urlItems = images.filter(isUrlImage);
+      const fileItems = images.filter(isFileImage);
+      let uploadedFileUrls: string[] = [];
+      let filesToDelete: string[] = [];
 
-        // Show success notification
+      // Upload new images to Firebase Storage if there are any
+      if (fileItems.length > 0) {
+        try {
+          uploadedFileUrls = await uploadImages(
+            fileItems.map((img) => img.file)
+          );
+        } catch (uploadError) {
+          notifications.show({
+            title: "Upload Error",
+            message: "Failed to upload images. Please try again.",
+            color: "red",
+          });
+          return;
+        }
+      }
+
+      // Prepare the data with all file URLs
+      const allFiles = [...urlItems.map((img) => img.url), ...uploadedFileUrls];
+      const allFileNames = images.map((img) => img.name);
+      const postData = {
+        ...data,
+        files: allFiles,
+        fileName: allFileNames,
+      };
+
+      if (editingPost && editingPost.id) {
+        // Find files to delete (present in editingPost.files but not in allFiles)
+        const originalFiles = editingPost.files || [];
+        filesToDelete = originalFiles.filter((url) => !allFiles.includes(url));
+        await updatePost(editingPost.id, postData);
+        if (filesToDelete.length > 0) {
+          await deleteFilesFromStorage(filesToDelete);
+        }
         notifications.show({
           title: "Success!",
           message: "Instagram post updated successfully",
           color: "green",
         });
       } else {
-        // Create new post
-        await firestoreService.addPost(data);
-        // Show success notification
+        await addPost(postData);
         notifications.show({
           title: "Success!",
           message: "Instagram post created successfully",
           color: "green",
         });
       }
-
-      // Reset form and close modal
       reset();
+      setImages([]);
       onClose();
     } catch (error) {
-      console.error("Error saving post:", error);
-
-      // Show error notification
       notifications.show({
         title: "Error",
         message: editingPost
@@ -112,6 +245,65 @@ const CreatePostForm = ({
 
       <Divider />
 
+      {/* Clipboard Images */}
+      <Box>
+        <Text size="sm" fw={500} mb={8}>
+          Images
+        </Text>
+        <Text size="xs" c="dimmed" mb={12}>
+          Paste images from clipboard (Ctrl+V) or click to select files
+        </Text>
+        <Group gap="xs" mb="md">
+          <Button
+            variant="light"
+            size="sm"
+            leftSection={<IconClipboard size="1rem" />}
+            onClick={handlePasteClick}
+          >
+            {editingPost ? "Add Images" : "Select Images"}
+          </Button>
+          <Text size="xs" c="dimmed">
+            {images.length} image(s) selected
+          </Text>
+        </Group>
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="image/*"
+          onChange={handleFileSelect}
+          style={{ display: "none" }}
+        />
+        {images.length > 0 && (
+          <Grid gutter="xs">
+            {images.map((img, index) => (
+              <Grid.Col key={index} span={4}>
+                <Box pos="relative">
+                  <Image
+                    src={
+                      img.type === "url"
+                        ? img.url
+                        : URL.createObjectURL(img.file)
+                    }
+                    alt={img.name}
+                    radius="sm"
+                    style={{ maxHeight: 120, objectFit: "cover" }}
+                  />
+                  <ActionIcon
+                    variant="filled"
+                    color="red"
+                    size="xs"
+                    style={{ position: "absolute", top: 4, right: 4 }}
+                    onClick={() => removeImage(index)}
+                  >
+                    <IconX size="0.8rem" />
+                  </ActionIcon>
+                </Box>
+              </Grid.Col>
+            ))}
+          </Grid>
+        )}
+      </Box>
       {/* File Names */}
       <Controller
         name="fileName"
@@ -119,14 +311,14 @@ const CreatePostForm = ({
         rules={{ required: "At least one file name is required" }}
         render={({ field }) => (
           <TagsInput
-            autoFocus
             label="File Names"
-            description="Add file names for your post (images/videos)"
-            placeholder="Enter file name and press Enter"
-            value={field.value}
+            description="File names from selected images (read-only)"
+            placeholder="Add images to populate file names"
+            value={images.map((img) => img.name)}
             onChange={field.onChange}
             leftSection={<IconPhoto size="1rem" />}
             error={errors.fileName?.message}
+            readOnly
           />
         )}
       />

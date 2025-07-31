@@ -1,6 +1,15 @@
-import { ActionIcon, Badge, Group, Stack, Text, Tooltip } from "@mantine/core";
-import { IconCopy, IconPhoto } from "@tabler/icons-react";
+import {
+  ActionIcon,
+  Badge,
+  Grid,
+  Group,
+  Image,
+  Stack,
+  Text,
+  Tooltip
+} from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { IconCopy } from "@tabler/icons-react";
 import { InstagramPost, PostStatus } from "../types";
 import { getPostStatus } from "../utils/postUtils";
 
@@ -114,14 +123,25 @@ const PostDetailsView = ({ post }: PostDetailsViewProps) => {
       <Stack gap="xs">
         <Text fw={600}>Files ({post.fileName.length}):</Text>
         {post.fileName.length > 0 ? (
-          <Stack gap="xs">
-            {post.fileName.map((fileName, index) => (
-              <Group key={index} gap="xs">
-                <IconPhoto size="1rem" />
-                <Text size="sm">{fileName}</Text>
-              </Group>
+          <Grid gutter="md">
+            {post.files.map((fileUrl, index) => (
+              <Grid.Col key={index} span={6}>
+                <Image
+                  src={fileUrl}
+                  alt={`Post image ${index + 1}`}
+                  radius="md"
+                  fit="cover"
+                  h={200}
+                  fallbackSrc="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OTk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIG5vdCBhdmFpbGFibGU8L3RleHQ+PC9zdmc+"
+                  style={{
+                    border: "1px solid #e0e0e0",
+                    cursor: "pointer",
+                  }}
+                  onClick={() => window.open(fileUrl, "_blank")}
+                />
+              </Grid.Col>
             ))}
-          </Stack>
+          </Grid>
         ) : (
           <Text size="sm" c="dimmed">
             No files
