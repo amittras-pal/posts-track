@@ -163,15 +163,17 @@ const PostsTable = ({
                   <Box
                     style={{
                       maxHeight: 240,
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center'
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      overflow: "hidden",
+                      borderRadius: 8,
                     }}
                   >
                     <Image
                       src={post.files[0]}
                       alt={post.fileName?.[0] || "Post image"}
-                      style={{ borderRadius: 8, objectFit: "cover" }}
+                      style={{ objectFit: "cover" }}
                     />
                   </Box>
                   {post.files.length > 1 && (

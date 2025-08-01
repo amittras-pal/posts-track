@@ -1,1 +1,6 @@
-export { getPostStatus, getPostsByStatus, getPostCounts, getAllHashtags } from "./postUtils";
+export {
+  getPostStatus,
+  getPostsByStatus,
+  getPostCounts,
+  getAllHashtags,
+} from "./postUtils";
